@@ -1,0 +1,112 @@
+import argparse
+from solvers import MFA_LR, RSDA, DGMA, MFA_NEW, NEW_DGMA
+from solvers_mcd import MCDA
+from selection_domain import SSDA
+from selection_domain_new import new_SSDA
+
+from load_SEED import load_seed
+from gaussian_uniform.weighted_pseudo_list import make_weighted_pseudo_list
+import os
+import numpy as np
+import random
+from utils import seed
+
+def main(args):
+    acc = []
+    f1 = []
+    mat = []
+    auc = []
+    mean_acc = 0
+    args.log_file.write('\n\n###########  initialization ############')
+    total_label = []
+    for i in range(15):
+        args.target = 15 - i # i+ 1
+        print("当前的目标域是",args.target)
+
+        X, Y, labels, _, _, count_num, netF = new_SSDA(args)
+        X, Y, acc_pre, f1_pre, auc_pre, mat_pre, log_loss = NEW_DGMA(X, Y, labels, count_num, netF, args)
+        acc.append(acc_pre)
+        f1.append(f1_pre)
+        mat.append(mat_pre)
+        auc.append(auc_pre)
+        del X, Y, acc_pre, f1_pre, auc_pre, mat_pre, log_loss
+    print("15个人的准确率为",acc)
+    print("15个人的f1为",f1)
+    print("15个人的mat为",mat)
+    print("15个人的auc为",auc)
+    mean_acc = sum(acc)/len(acc)
+    result_std = np.std(acc)
+    print("平均准确率为：{:.4f},方差为{:.4f}".format(mean_acc,result_std))
+
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Spherical Space Domain Adaptation with Pseudo-label Loss')
+    parser.add_argument('--baseline', type=str, default='MSTN', choices=['MSTN', 'DANN'])
+    parser.add_argument('--device', type=str, default='cuda')
+    parser.add_argument('--gpu_id', type=str, nargs='?', default='0', help="device id to run")
+    parser.add_argument('--dataset',type=str,default='seed')
+    parser.add_argument('--source', type=str, default='amazon')
+    parser.add_argument('--target', type=int, default=1)
+    parser.add_argument('--iteration', type=int, default=1, help="Iteration repetitions")
+    parser.add_argument('--test_interval', type=int, default=1, help="interval of two continuous test phase")
+    parser.add_argument('--snapshot_interval', type=int, default=1000, help="interval of two continuous output model")
+    parser.add_argument('--output_dir', type=str, default='san', help="output directory of our model (in ../snapshot directory)")
+    parser.add_argument('--mixed_sessions', type=str, default='per_session', help="[per_session | mixed]")
+    parser.add_argument('--lr_a', type=float, default=0.1, help="learning rate 1")
+    parser.add_argument('--lr_b', type=float, default=0.1, help="learning rate 2")
+    parser.add_argument('--radius', type=float, default=10, help="radius")
+    parser.add_argument('--num_class',type=int,default=3,help='the number of classes')
+    parser.add_argument('--num_class2',type=int,default=14,help='the number of classes')
+    parser.add_argument('--stages', type=int, default=1, help='the number of alternative iteration stages')
+    parser.add_argument('--max_iter1',type=int,default=20)
+    parser.add_argument('--max_iter2', type=int, default=35)#35
+    parser.add_argument('--max_iter3', type=int, default=10)
+    parser.add_argument('--batch_size',type=int,default=50)
+    parser.add_argument('--seed', type=int, default=123, help="random seed number ")
+    parser.add_argument('--bottleneck_dim', type=int, default=128, help="Bottleneck (features) dimensionality")
+    parser.add_argument('--session', type=int, default=1, help="random seed number ")
+    parser.add_argument('--gamma', type=int, default=1, help="gamma for Adver_network ")
+    parser.add_argument('--file_path', type=str, default='E:\Research\EEGDataSet\SEED1\SEED\ExtractedFeatures/', help="Path from the current dataset")
+    parser.add_argument('--log_file')
+    #####
+    parser.add_argument('--ila_switch_iter', type=int, default=1, help="number of iterations when only DA loss works and sim doesn't")
+    parser.add_argument('--n_samples', type=int, default=2, help='number of samples from each src class')
+    parser.add_argument('--mu', type=int, default=80, help="these many target samples are used finally, eg. 2/3 of batch")  # mu in number
+    parser.add_argument('--k', type=int, default=3, help="k")
+    parser.add_argument('--msc_coeff', type=float, default=1.0, help="coeff for similarity loss")
+    #####
+    args = parser.parse_args()
+
+    # Set random SEED
+    seed(1)
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
+    os.environ['PYDEVD_DISABLE_FILE_VALIDATION'] = '1'
+    # create directory snapshot
+    if not os.path.exists('snapshot'):
+        os.mkdir('snapshot')
+    # create directory
+    if not os.path.exists('snapshot/{}'.format(args.output_dir)):
+        os.mkdir('snapshot/{}'.format(args.output_dir))
+    # create file name for log.txt
+    log_file = open('snapshot/{}/log.txt'.format(args.output_dir),'w')
+    log_file.write('dataset:{}\tsource:{}\ttarget:{}\n\n'
+                   ''.format(args.dataset,args.source, str(args.target)))
+    args.log_file = log_file
+
+    # Assign file paths
+    if args.dataset == "seed":
+        args.file_path = "E:\Research\EEGDataSet\SEED1\SEED\ExtractedFeatures/"
+    elif args.dataset == "seed-iv":
+        args.file_path = "/home/magdiel/Data/SEED-IV/eeg/"
+    else:
+        print("This dataset does not exist.")
+        exit(-1)
+
+
+    main(args)
+
+
+
+
