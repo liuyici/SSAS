@@ -605,20 +605,14 @@ def NEW_DGMA(X, Y, Domain_label, count_num, netF, args):
         netB.train(False)
         netC.train(False)
         netD.train(False)
-        final_f1 = 0
-        final_auc = 0
-        final_mat =[]
+
         # 计算准确率及其他指标
         acc, best_f1, best_auc, best_mat, features, labels = test_muda(dataset_test, netA,netB,netC,args)
         log_str = "iter: {:05d}, \t accuracy: {:.4f} \t f1: {:.4f} \t auc: {:.4f}".format(i, acc, best_f1, best_auc)
-        if final_acc < acc:
-            final_acc = acc
-            final_f1 = best_f1
-            final_auc = best_auc
-            final_mat = best_mat
+       
         args.log_file.write(log_str)
         args.log_file.flush()
         print(log_str)
         log_total_loss.append(total_loss.data)
 
-    return X, Y, final_acc, final_f1, final_auc, final_mat,  log_total_loss, acc
+    return X, Y, acc, best_f1, best_auc, best_mat,  log_total_loss
