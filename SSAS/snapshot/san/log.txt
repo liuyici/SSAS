@@ -1,0 +1,5 @@
+dataset:seed	source:amazon	target:1
+
+
+
+###########  initialization ############iter: 0.000000, 	 ×ÜËğÊ§: 4.8877
